@@ -1,0 +1,5 @@
+
+An Mcollectic application and agent that deploys and runs scripts on a collective
+
+dependencies: 
+  mcollective puppet plugin : https://github.com/puppetlabs/mcollective-puppet-agent 
