@@ -1,3 +1,5 @@
+require 'csv'
+
 class MCollective::Application::Runscript<MCollective::Application
   description 'Deploys scrips from a puppet fileserver and runs them'
 
@@ -10,13 +12,6 @@ class MCollective::Application::Runscript<MCollective::Application
     :description => 'Run script as another user',
     :arguments   => ['-u', '--user USER' ],
     :default     => 'root',
-    :required    => false
-
-  option :show_stdout,
-    :description => 'Show stdout of script run',
-    :arguments   => '--show_stdout',
-    :default     => false,
-    :type        => :bool,
     :required    => false
 
   option :deploy,
@@ -45,27 +40,30 @@ class MCollective::Application::Runscript<MCollective::Application
     :type        => :bool,
     :required    => false
 
+  option :output_csv,
+    :description => 'Write Output to CSV file',
+    :arguments   => ['-o', '--output_csv FILE'],
+    :default     => false,
+    :required    => false
 
-  def print_result(node, result)
-    puts
-    puts "Hostname          : " + node
-    puts "Return Value      : " + result[:status]
-    puts
-    unless result[:out].empty?
-      puts "Error Channel   :"
-      puts result[:out]
-    end
-    unless result[:err].empty?
-      puts "Message Channel :"
-      puts result[:err]
-    end
-  end
-
-
+   
   def main
+    
+    # check if the output csv already exists
+    csvfile = nil
+    sep = ', '
+    if configuration[:output_csv]
+      if File.exists? configuration[:output_csv]
+        raise "ERROR: output file already exists!"
+      end
+      csvfile = CSV.open(configuration[:output_csv], 'w')
+    end
+
+    # get the agents
     puppet    = rpcclient('puppet')
     runscript = rpcclient('runscript')
 
+    # assemble some variables
     script = File.join configuration[:destination_path], configuration[:script_name]
     source = File.join configuration[:source_path], configuration[:script_name]
     user   = configuration[:user]
@@ -84,12 +82,18 @@ class MCollective::Application::Runscript<MCollective::Application
     end
 
     # Run script on nodes
-    printrpc runscript.run(:script => script, :user => user)
-    #.each do |node, result|
-    #  if configuration[:show_stdout] or result[:status]
-    #    print_result(node, result)
-    #  end
-    #end
+    unless configuration[:output_csv]
+      printrpc runscript.run(:script => script, :user => user)
+    else
+      runscript.run(:script => script, :user => user).each do |resp|
+        csv_line = []
+        csv_line << resp[:sender]
+        csv_line << resp[:data][:status]
+        csv_line << resp[:data][:out]
+        csv_line << resp[:data][:err]
+        csvfile << csv_line
+      end
+    end
 
     # Remove script if we don't want to keep it and 
     # it was deployed with puppet
