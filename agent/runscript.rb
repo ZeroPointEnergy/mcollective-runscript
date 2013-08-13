@@ -5,7 +5,13 @@ module MCollective
       action 'run' do
         validate :script, :shellsafe
 
-        reply[:status] = run(request[:script], :stdout => :out, :stderr => :err)
+        command = request[:script]
+
+        unless request[:user] == 'root' 
+          command = "sudo -u #{request[:user]} -s \'#{request[:script]}\'"
+        end
+
+        reply[:status] = run(command, :stdout => :out, :stderr => :err)
         reply[:out].chomp!
         reply[:err].chomp!
       end

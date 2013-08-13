@@ -7,12 +7,22 @@ metadata :name        => "runscript",
          :timeout     => 60
 
 action "run", :description => "Runs a script" do
+  display :always
+
   input :script,
         :prompt      => "Script name",
         :description => "Name and full path of the script we want to run",
         :type        => :string,
         :validation  => '^.*$',
         :optional    => false,
+        :maxlength   => 255
+
+  input :user,
+        :prompt      => "Username",
+        :description => "The name of the user the script will run with",
+        :type        => :string,
+        :validation  => '^.*$',
+        :optional    => true,
         :maxlength   => 255
  
   output :status,
@@ -23,7 +33,7 @@ action "run", :description => "Runs a script" do
          :description => "The Output of the script on stdout",
          :display_as  => "Output Channel"
 
-   output :err,
+  output :err,
          :description => "The Output of the script on stderr",
          :display_as  => "Error Channel"
 

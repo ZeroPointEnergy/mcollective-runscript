@@ -4,8 +4,13 @@ class MCollective::Application::Runscript<MCollective::Application
   option :script_name,
     :description => 'Name of the script to deploy and run',
     :arguments   => ['-s', '--script_name SCRIPT'],
-    :type        => :string,
     :required    => true
+
+  option :user,  
+    :description => 'Run script as another user',
+    :arguments   => ['-u', '--user USER' ],
+    :default     => 'root',
+    :required    => false
 
   option :show_stdout,
     :description => 'Show stdout of script run',
@@ -25,17 +30,15 @@ class MCollective::Application::Runscript<MCollective::Application
     :description => 'the puppet source path. Example \'puppet:///modules/scriptpool/\'',
     :arguments   => '--source_path PATH',
     :default     => 'puppet:///modules/scriptpool/',
-    :type        => :string,
     :required    => false
 
   option :destination_path,
-    :description => 'where to deploy the script',
+    :description => 'where to deploy and/or run the script. Defaults to /usr/local/bin/',
     :arguments   => '--destination_path PATH',
     :default     => '/usr/local/bin/',
-    :type        => :string,
     :required    => false
 
-  options :keep_script,
+  option :keep_script,
     :description => 'don\'t remove scripts that where deployed with puppet after execution.',
     :arguments   => '--keep_script',
     :default     => false,
@@ -65,9 +68,10 @@ class MCollective::Application::Runscript<MCollective::Application
 
     script = File.join configuration[:destination_path], configuration[:script_name]
     source = File.join configuration[:source_path], configuration[:script_name]
+    user   = configuration[:user]
 
     # Deploy script from puppet fileserver
-    if configoration[:deploy]
+    if configuration[:deploy]
 
       printrpc puppet.resource(
         :type   => 'file',
@@ -80,11 +84,12 @@ class MCollective::Application::Runscript<MCollective::Application
     end
 
     # Run script on nodes
-    runscript.run(:script => script).each do |node, result|
-      if configuration[:show_stdout] or result[:status]
-        print_result(node, result)
-      end
-    end
+    printrpc runscript.run(:script => script, :user => user)
+    #.each do |node, result|
+    #  if configuration[:show_stdout] or result[:status]
+    #    print_result(node, result)
+    #  end
+    #end
 
     # Remove script if we don't want to keep it and 
     # it was deployed with puppet
